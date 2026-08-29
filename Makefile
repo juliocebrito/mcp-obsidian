@@ -1,7 +1,8 @@
 PORT ?= 8000
+MCP_PORT ?= 8001
 ENV_FILE ?= .env
 
-.PHONY: install serve tunnel dev check-env
+.PHONY: install serve tunnel dev check-env serve-mcp stdio inspector dev-mcp
 
 install:
 	uv sync
@@ -21,3 +22,19 @@ dev: check-env
 	server_pid=$$!; \
 	trap 'kill $$server_pid 2>/dev/null' EXIT INT TERM; \
 	ngrok http $(PORT)
+
+# Servidor MCP con el SDK oficial, en un puerto distinto para poder comparar con el proxy viejo.
+serve-mcp: check-env
+	uv run --env-file $(ENV_FILE) python -m mcp_obsidian --transport streamable-http --port $(MCP_PORT)
+
+stdio: check-env
+	uv run --env-file $(ENV_FILE) python -m mcp_obsidian
+
+inspector: check-env
+	uv run --env-file $(ENV_FILE) mcp dev src/mcp_obsidian/server.py
+
+dev-mcp: check-env
+	@uv run --env-file $(ENV_FILE) python -m mcp_obsidian --transport streamable-http --port $(MCP_PORT) & \
+	server_pid=$$!; \
+	trap 'kill $$server_pid 2>/dev/null' EXIT INT TERM; \
+	ngrok http $(MCP_PORT)
