@@ -42,6 +42,9 @@ Sobrescribe `MCP_PORT` o `ENV_FILE` por variable: `make serve MCP_PORT=9000`.
 - Ejecuta siempre a través de `uv run --env-file .env`; el servidor falla al arrancar si
   `OBSIDIAN_TOKEN` no está definido.
 - Copia `.env.example` a `.env` para empezar. `.env` está en `.gitignore` y debe seguir así.
+- No compares `.env` con `.env.example`: el primero es personal y diverge de forma legítima.
+  Lo que sí exige el proyecto es que toda variable leída en `src/` esté documentada en
+  `.env.example`, y de eso se encarga `make check-env`.
 - En este equipo el shim `python` de pyenv está roto: usa `python3`.
 
 ## Reglas de seguridad

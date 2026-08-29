@@ -6,8 +6,15 @@ ENV_FILE ?= .env
 install:
 	uv sync
 
+# No compara .env con .env.example: .env es personal y diverge de forma legítima. Lo que
+# comprueba es que toda variable leída por config.py esté documentada en .env.example.
 check-env:
 	@test -f $(ENV_FILE) || { echo "Falta $(ENV_FILE). Copia .env.example y define OBSIDIAN_TOKEN."; exit 1; }
+	@missing=""; \
+	for var in $$(grep -ohE '"(OBSIDIAN|MCP)_[A-Z_]+"' src/mcp_obsidian/*.py | tr -d '"' | sort -u); do \
+		grep -qE "^#? *$$var=" .env.example || missing="$$missing $$var"; \
+	done; \
+	test -z "$$missing" || { echo "Sin documentar en .env.example:$$missing"; exit 1; }
 
 serve: check-env
 	uv run --env-file $(ENV_FILE) python -m mcp_obsidian --transport streamable-http --port $(MCP_PORT)
