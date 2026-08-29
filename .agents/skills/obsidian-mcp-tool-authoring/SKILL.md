@@ -7,15 +7,15 @@ description: Añadir, modificar o depurar una herramienta MCP que llama a la Obs
 
 ## Antes de empezar
 
-Lee `docs/plan-mcp-puro.md`. El proyecto está migrando del JSON-RPC escrito a mano en
-`main.py` al SDK oficial (`mcp[cli]` v2). El estilo de la tool depende de en qué lado estés:
+Las tools viven en `src/mcp_obsidian/server.py` sobre el SDK oficial (`mcp[cli]` v2): una
+función decorada con `@mcp.tool()`. El esquema se deriva de los type hints y de la
+descripción del docstring, así que no escribas JSON Schema a mano.
 
-- **Antes de la migración**: cada tool son dos piezas separadas que hay que mantener en
-  sincronía a mano — una entrada en la respuesta de `tools/list` con su `inputSchema` JSON
-  Schema, y una rama en el despacho de `tools/call`. Si añades una y olvidas la otra, el
-  agente ve una herramienta que falla al invocarse, o una que existe pero es invisible.
-- **Después de la migración**: una función decorada con `@mcp.tool()`. El esquema se deriva
-  de los type hints y la descripción del docstring. No escribas JSON Schema a mano.
+Si la tool escribe o borra, no la decores: defínela suelta y regístrala al final del módulo
+dentro del bloque que comprueba `settings.read_only` y `settings.allow_destructive`. Una
+herramienta no registrada no existe para el modelo.
+
+Contexto histórico de las decisiones: `docs/plan-mcp-puro.md`.
 
 ## Contrato con la API de Obsidian
 

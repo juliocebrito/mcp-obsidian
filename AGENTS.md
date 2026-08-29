@@ -7,17 +7,20 @@ Guía para agentes de código que trabajen en este repositorio.
 Servidor MCP que expone un vault de Obsidian a asistentes de IA. Actúa como proxy hacia la
 **Obsidian Local REST API** (`https://127.0.0.1:27124`), autenticándose con un token Bearer.
 
-Hoy son 7 herramientas: `search_notes`, `get_note`, `create_note`, `append_note`,
-`list_directory`, `move_note`, `delete_note`.
+Son 7 herramientas: `search_notes`, `get_note`, `create_note`, `append_note`,
+`list_directory`, `move_note`, `delete_note`. Solo las cinco primeras se publican por defecto:
+`move_note` y `delete_note` exigen `MCP_ALLOW_DESTRUCTIVE=1`, y `MCP_READ_ONLY=1` deja
+únicamente las de lectura.
 
-## Estado actual y dirección
+## Estado actual
 
-El código en `main.py` es una app **FastAPI** que implementa el JSON-RPC de MCP a mano y
-expone endpoints OAuth **simulados** para satisfacer el conector de Gemini Spark.
+El paquete `src/mcp_obsidian/` usa el **SDK oficial de Python** (`mcp[cli]` v2) con
+`MCPServer`. Elige transporte en tiempo de ejecución: `stdio` para agentes locales y
+`streamable-http` para remotos. Con `MCP_OAUTH_CLIENT_ID`/`SECRET` definidos, el propio
+servidor hace de authorization server (`auth.py`), que es lo que exige el conector de Gemini.
 
-Está previsto migrarlo al SDK oficial de Python (`mcp[cli]` v2). Antes de hacer cambios
-estructurales, lee `docs/plan-mcp-puro.md`: define las fases, las decisiones ya tomadas y
-las preguntas todavía abiertas. No rehagas ese análisis desde cero.
+El antiguo proxy FastAPI de `main.py` ya no existe. `docs/plan-mcp-puro.md` recoge las
+decisiones tomadas durante la migración.
 
 Los skills específicos del proyecto viven en `.agents/skills/`.
 
@@ -26,11 +29,12 @@ Los skills específicos del proyecto viven en `.agents/skills/`.
 | Comando | Uso |
 | --- | --- |
 | `make install` | Instala dependencias con `uv sync` |
-| `make serve` | Levanta uvicorn en el puerto 8000 con recarga |
-| `make tunnel` | Expone el puerto por ngrok |
-| `make dev` | Ambos a la vez; Ctrl+C detiene los dos |
+| `make stdio` | Transporte stdio, para agentes locales |
+| `make serve` | streamable-http en el puerto 8001 |
+| `make dev` | El anterior + ngrok; Ctrl+C detiene los dos |
+| `make inspector` | MCP Inspector por stdio |
 
-Sobrescribe `PORT` o `ENV_FILE` por variable: `make serve PORT=9000`.
+Sobrescribe `MCP_PORT` o `ENV_FILE` por variable: `make serve MCP_PORT=9000`.
 
 ## Entorno
 
@@ -47,15 +51,17 @@ Son las restricciones que más fácilmente se rompen sin darse cuenta:
 1. **Nunca escribas secretos en el código ni en el historial.** Los tokens van solo en `.env`.
 2. El servidor se expone públicamente por ngrok. Cualquier endpoint nuevo hay que asumirlo
    alcanzable desde internet: no añadas rutas sin autenticar que toquen el vault.
-3. Los endpoints `/authorize` y `/token` actuales devuelven credenciales dummy. Son un
-   parche conocido, no un modelo a imitar ni a extender.
+3. Una herramienta destructiva nueva no se registra sin comprobar `MCP_ALLOW_DESTRUCTIVE`.
+   No basta con avisar en el docstring: quien decide invocarla es un modelo.
 4. Valida las rutas de nota antes de concatenarlas a una URL: `..` no debe permitir salir
    del vault.
-5. `httpx.AsyncClient(verify=False)` está pendiente de corregir. No copies ese patrón.
+5. `OBSIDIAN_VERIFY_TLS=0` desactiva la verificación del certificado de Obsidian. Es el
+   valor por defecto porque su certificado es autofirmado, pero no copies ese patrón en
+   llamadas a otros servicios.
 
 ## Convenciones
 
 - Mensajes de error de cara al usuario en español, igual que el resto del proyecto.
-- Si el servidor pasa a transporte stdio, **nada puede escribir en stdout**: `print()` corrompe
-  el canal JSON-RPC. Usa el módulo `logging`.
+- El transporte stdio comparte canal con stdout: `print()` corrompe el JSON-RPC. Usa el
+  módulo `logging`, que ya escribe a stderr.
 - No crees archivos markdown de documentación salvo que se pidan.

@@ -5,10 +5,8 @@ description = "Servidor MCP sobre la Obsidian Local REST API"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "mcp[cli]>=2.1.1",
-    "uvicorn>=0.52.1",
 ]
 
 [build-system]

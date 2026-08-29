@@ -6,8 +6,7 @@ Reemplazar el JSON-RPC escrito a mano en `main.py` por el **SDK oficial de Pytho
 
 ## Qué existe ya
 
-El paquete `src/mcp_obsidian/` corre en paralelo a `main.py`, que sigue intacto en el puerto 8000
-para poder comparar ambos contra Gemini:
+El paquete `src/mcp_obsidian/` es ya el único servidor; `main.py` está borrado:
 
 | Archivo | Contenido |
 | --- | --- |
@@ -17,8 +16,8 @@ para poder comparar ambos contra Gemini:
 | `server.py` | `MCPServer`, las 7 tools, `StaticTokenVerifier` y el lifespan que cierra httpx |
 | `__main__.py` | Selección de transporte y `transport_security` |
 
-Targets nuevos: `make serve-mcp` (HTTP en 8001), `make stdio`, `make inspector`, `make dev-mcp`
-(HTTP + ngrok). Los antiguos `make serve` y `make dev` no se han tocado.
+Targets: `make serve` (HTTP en 8001), `make stdio`, `make inspector`, `make dev` (HTTP + ngrok)
+y `make tunnel`.
 
 ## Opciones evaluadas
 
@@ -54,8 +53,8 @@ Motivan las fases 3 y 4:
 1. ~~Crear `src/mcp_obsidian/`~~ con `client.py`, `server.py` y `config.py`.
 2. ~~Portar las 7 herramientas a `@mcp.tool()` tipadas~~ — nombres, parámetros y `required` coinciden
    con los del `inputSchema` manual, verificado contra el vault real.
-3. `main.py` sigue en pie a propósito, como referencia para el A/B con Gemini. Se borra en un PR
-   posterior, cuando el nuevo servidor esté validado.
+3. ~~Borrar `main.py`~~ una vez validado el servidor nuevo contra Gemini (`tools/list` y
+   `tools/call` con respuestas reales del vault).
 
 ### Fase 2 — Transportes (depende de fase 1) — hecha
 
@@ -65,8 +64,8 @@ Motivan las fases 3 y 4:
 
 ### Fase 3 — Autorización real (paralela a fase 4) — hecha en el núcleo nuevo
 
-6. Los `/authorize`, `/token` y `.well-known` simulados siguen en `main.py`; el paquete nuevo no
-   los reproduce. Desaparecen cuando se borre `main.py`.
+6. ~~Los `/authorize`, `/token` y `.well-known` simulados desaparecen~~ con `main.py`. Los reales
+   los monta el SDK.
 7. ~~`TokenVerifier` contra `MCP_AUTH_TOKEN`~~ con `secrets.compare_digest` y `AuthSettings`.
 8. **Resuelto: Gemini solo habla OAuth.** Su diálogo de app conectada pide *ID de cliente* y
    *Secreto de cliente*; no admite pegar un Bearer. En vez de un shim se usa
@@ -78,21 +77,22 @@ Motivan las fases 3 y 4:
 
 9. Verificación TLS configurable (CA propia del certificado de Obsidian). Adelantado a medias:
    `OBSIDIAN_VERIFY_TLS` ya existe y avisa al arrancar, pero por defecto sigue desactivada.
-10. ~~Validar rutas para impedir escapes del vault~~ (`safe_path`). Falta el modo de escritura
-    opcional para `delete_note`/`move_note`.
+10. ~~Validar rutas para impedir escapes del vault~~ (`safe_path`). ~~Modo de escritura opcional~~:
+    `MCP_READ_ONLY` y `MCP_ALLOW_DESTRUCTIVE` deciden qué herramientas se registran. Falta que
+    `create_note` se niegue a sobrescribir una nota existente.
 
 ### Fase 5 — Distribución multiagente
 
 11. `[project.scripts]` en `pyproject.toml` para exponer un ejecutable `mcp-obsidian`.
-12. Actualizar el `Makefile`: `make dev` sigue sirviendo HTTP+ngrok, y se añade un target stdio.
+12. ~~Actualizar el `Makefile`~~: `serve`, `stdio`, `dev`, `tunnel` e `inspector` apuntan ya al
+    paquete nuevo.
 13. Documentar en `README.md` los snippets de conexión para cada agente.
 
 ## Archivos
 
-- `main.py` — origen de las 7 tools; se reduce o desaparece a favor de `src/`.
-- `pyproject.toml` — cambiar `fastapi`/`uvicorn` por `mcp[cli]`; añadir entry point. El `name` sigue siendo `proxy-oauth` y debe actualizarse.
-- `Makefile` — reutilizar `check-env` y el patrón `--env-file`.
-- `.env.example` — añadir `MCP_AUTH_TOKEN` y el modo de escritura.
+- ~~`main.py`~~ — borrado; las 7 tools viven en `src/mcp_obsidian/server.py`.
+- `pyproject.toml` — ~~`name` y dependencias corregidos~~; falta el entry point.
+- ~~`Makefile`~~ y ~~`.env.example`~~ — al día.
 
 ## Verificación
 
