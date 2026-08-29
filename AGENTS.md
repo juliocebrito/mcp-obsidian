@@ -58,9 +58,9 @@ Son las restricciones que más fácilmente se rompen sin darse cuenta:
    No basta con avisar en el docstring: quien decide invocarla es un modelo.
 4. Valida las rutas de nota antes de concatenarlas a una URL: `..` no debe permitir salir
    del vault.
-5. `OBSIDIAN_VERIFY_TLS=0` desactiva la verificación del certificado de Obsidian. Es el
-   valor por defecto porque su certificado es autofirmado, pero no copies ese patrón en
-   llamadas a otros servicios.
+5. `OBSIDIAN_VERIFY_TLS` admite `0` (no verificar), `1` (CA del sistema, que no sirve para
+   un autofirmado) o la ruta a una CA. `make cert` descarga la de Obsidian. El certificado
+   solo cubre `127.0.0.1`: con `localhost` en `OBSIDIAN_URL` la verificación falla.
 6. El almacén de `store.py` guarda tokens en claro. Se crea con `0600` y por defecto vive
    fuera del repositorio; si cambias `MCP_TOKEN_STORE`, que no apunte al árbol de trabajo.
 

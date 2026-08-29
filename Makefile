@@ -1,10 +1,20 @@
 MCP_PORT ?= 8001
 ENV_FILE ?= .env
+OBSIDIAN_URL ?= https://127.0.0.1:27124
+CERT ?= $(HOME)/.local/state/mcp-obsidian/obsidian.crt
 
-.PHONY: install check-env serve stdio inspector tunnel dev
+.PHONY: install check-env cert serve stdio inspector tunnel dev
 
 install:
 	uv sync
+
+# Descarga la CA que firma el certificado de Obsidian. El -k es inevitable: es la primera
+# vez que se ve ese certificado y no hay nada contra lo que validarlo todavía.
+cert:
+	@mkdir -p $(dir $(CERT))
+	@curl -sfk -o $(CERT) $(OBSIDIAN_URL)/obsidian-local-rest-api.crt
+	@echo "Certificado en $(CERT)"
+	@echo "Pon OBSIDIAN_VERIFY_TLS=$(CERT) en $(ENV_FILE)."
 
 # No compara .env con .env.example: .env es personal y diverge de forma legítima. Lo que
 # comprueba es que toda variable leída por config.py esté documentada en .env.example.

@@ -1,4 +1,5 @@
 import logging
+import ssl
 from urllib.parse import quote
 
 import httpx
@@ -27,6 +28,18 @@ def safe_path(path: str, *, allow_empty: bool = False) -> str:
     return quote(cleaned, safe="/")
 
 
+def _es_fallo_tls(exc: BaseException) -> bool:
+    """httpx anida el SSLError bajo su propio ConnectError y el de httpcore."""
+    causa: BaseException | None = exc
+    for _ in range(10):
+        if causa is None:
+            return False
+        if isinstance(causa, ssl.SSLError):
+            return True
+        causa = causa.__cause__ or causa.__context__
+    return False
+
+
 class ObsidianClient:
     """Cliente HTTP contra la Obsidian Local REST API."""
 
@@ -34,8 +47,8 @@ class ObsidianClient:
         self._url = settings.obsidian_url
         if not settings.verify_tls:
             logger.warning(
-                "Verificación TLS desactivada contra %s. Define OBSIDIAN_VERIFY_TLS=1 "
-                "cuando el certificado de Obsidian sea de confianza.",
+                "Verificación TLS desactivada contra %s. Descarga el certificado con "
+                "`make cert` y apunta OBSIDIAN_VERIFY_TLS a él.",
                 self._url,
             )
         self._client = httpx.AsyncClient(
@@ -55,13 +68,19 @@ class ObsidianClient:
         try:
             return await self._client.request(method, path, **kwargs)
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
-            raise MCPError(
-                code=INTERNAL_ERROR,
-                message=(
+            # Sin distinguirlos, un certificado rechazado se anuncia como "Obsidian no
+            # está abierto" y manda a mirar donde no es.
+            if _es_fallo_tls(exc):
+                message = (
+                    f"El certificado de Obsidian en {self._url} no supera la verificación. "
+                    "Descarga el actual con `make cert` y apunta OBSIDIAN_VERIFY_TLS a él."
+                )
+            else:
+                message = (
                     f"No se pudo conectar con Obsidian en {self._url}. "
                     "Comprueba que Obsidian esté abierto y el plugin Local REST API activo."
-                ),
-            ) from exc
+                )
+            raise MCPError(code=INTERNAL_ERROR, message=message) from exc
 
     @staticmethod
     def _body(response: httpx.Response) -> str:

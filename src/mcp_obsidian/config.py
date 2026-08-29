@@ -19,6 +19,22 @@ def _list(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _verify_tls() -> bool | str:
+    raw = os.environ.get("OBSIDIAN_VERIFY_TLS", "").strip()
+    if not raw or raw.lower() in {"0", "false", "no", "off"}:
+        return False
+    if raw.lower() in {"1", "true", "yes", "on"}:
+        return True
+    # Cualquier otro valor es la ruta a la CA que firma el certificado de Obsidian.
+    ca = Path(raw).expanduser()
+    if not ca.is_file():
+        raise ConfigError(
+            f"OBSIDIAN_VERIFY_TLS apunta a {ca}, que no existe. "
+            "Descarga el certificado con `make cert` o pon 0 para no verificar."
+        )
+    return str(ca)
+
+
 def _token_store_path() -> Path:
     custom = os.environ.get("MCP_TOKEN_STORE")
     if custom:
@@ -32,7 +48,7 @@ def _token_store_path() -> Path:
 class Settings:
     obsidian_url: str
     obsidian_token: str
-    verify_tls: bool
+    verify_tls: bool | str
     read_only: bool
     allow_destructive: bool
     auth_token: str | None
@@ -70,7 +86,7 @@ def load_settings() -> Settings:
     return Settings(
         obsidian_url=os.environ.get("OBSIDIAN_URL", "https://127.0.0.1:27124").rstrip("/"),
         obsidian_token=token,
-        verify_tls=_flag("OBSIDIAN_VERIFY_TLS", default=False),
+        verify_tls=_verify_tls(),
         read_only=_flag("MCP_READ_ONLY", default=False),
         allow_destructive=_flag("MCP_ALLOW_DESTRUCTIVE", default=False),
         auth_token=os.environ.get("MCP_AUTH_TOKEN") or None,

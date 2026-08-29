@@ -75,8 +75,9 @@ Motivan las fases 3 y 4:
 
 ### Fase 4 — Endurecimiento
 
-9. Verificación TLS configurable (CA propia del certificado de Obsidian). Adelantado a medias:
-   `OBSIDIAN_VERIFY_TLS` ya existe y avisa al arrancar, pero por defecto sigue desactivada.
+9. ~~Verificación TLS configurable (CA propia del certificado de Obsidian)~~: `make cert`
+   descarga la CA del plugin y `OBSIDIAN_VERIFY_TLS` acepta su ruta. El certificado solo
+   cubre `127.0.0.1`, así que `OBSIDIAN_URL` no puede usar `localhost`.
 10. ~~Validar rutas para impedir escapes del vault~~ (`safe_path`). ~~Modo de escritura opcional~~:
     `MCP_READ_ONLY` y `MCP_ALLOW_DESTRUCTIVE` deciden qué herramientas se registran. Falta que
     `create_note` se niegue a sobrescribir una nota existente.
