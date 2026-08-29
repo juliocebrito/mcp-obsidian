@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 class ConfigError(RuntimeError):
@@ -18,6 +19,15 @@ def _list(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _token_store_path() -> Path:
+    custom = os.environ.get("MCP_TOKEN_STORE")
+    if custom:
+        return Path(custom).expanduser()
+    # Fuera del repositorio a propósito: contiene tokens y no debe poder acabar en un commit.
+    state = os.environ.get("XDG_STATE_HOME") or "~/.local/state"
+    return Path(state).expanduser() / "mcp-obsidian" / "tokens.json"
+
+
 @dataclass(frozen=True)
 class Settings:
     obsidian_url: str
@@ -29,6 +39,7 @@ class Settings:
     oauth_client_id: str | None
     oauth_client_secret: str | None
     oauth_redirect_uris: list[str]
+    token_store_path: Path
     issuer_url: str
     resource_url: str
     allowed_hosts: list[str]
@@ -66,6 +77,7 @@ def load_settings() -> Settings:
         oauth_client_id=os.environ.get("MCP_OAUTH_CLIENT_ID") or None,
         oauth_client_secret=os.environ.get("MCP_OAUTH_CLIENT_SECRET") or None,
         oauth_redirect_uris=_list("MCP_OAUTH_REDIRECT_URIS"),
+        token_store_path=_token_store_path(),
         issuer_url=os.environ.get("MCP_ISSUER_URL", default_resource),
         resource_url=os.environ.get("MCP_RESOURCE_URL", default_resource),
         allowed_hosts=_list("MCP_ALLOWED_HOSTS"),

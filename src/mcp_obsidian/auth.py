@@ -22,11 +22,13 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import AnyUrl
 
 from .config import Settings
+from .store import TokenStore
 
 logger = logging.getLogger(__name__)
 
 CODE_TTL_SECONDS = 300
 TOKEN_TTL_SECONDS = 3600
+REFRESH_TTL_SECONDS = 30 * 24 * 3600
 
 
 class LocalAuthProvider(OAuthAuthorizationServerProvider):
@@ -34,7 +36,7 @@ class LocalAuthProvider(OAuthAuthorizationServerProvider):
         self._static_token = settings.auth_token
         self._resource = settings.resource_url
         self._codes: dict[str, AuthorizationCode] = {}
-        self._tokens: dict[str, AccessToken] = {}
+        self._store = TokenStore(settings.token_store_path)
         redirect_uris = [AnyUrl(uri) for uri in settings.oauth_redirect_uris] or None
         if redirect_uris is None:
             logger.warning(
@@ -45,7 +47,7 @@ class LocalAuthProvider(OAuthAuthorizationServerProvider):
             client_id=settings.oauth_client_id or "",
             client_secret=settings.oauth_client_secret,
             redirect_uris=redirect_uris,
-            grant_types=["authorization_code"],
+            grant_types=["authorization_code", "refresh_token"],
             response_types=["code"],
             token_endpoint_auth_method="client_secret_post",
         )
@@ -97,21 +99,41 @@ class LocalAuthProvider(OAuthAuthorizationServerProvider):
     ) -> OAuthToken:
         # De un solo uso: si el código se filtra, ya no sirve una segunda vez.
         self._codes.pop(authorization_code.code, None)
-
-        access_token = secrets.token_urlsafe(32)
-        self._tokens[access_token] = AccessToken(
-            token=access_token,
-            client_id=client.client_id,
-            scopes=authorization_code.scopes,
-            expires_at=int(time.time()) + TOKEN_TTL_SECONDS,
-            resource=authorization_code.resource,
-        )
         logger.info("Token de acceso emitido para el cliente OAuth.")
+        return self._issue(
+            client.client_id, authorization_code.scopes, authorization_code.resource
+        )
+
+    def _issue(
+        self, client_id: str, scopes: list[str], resource: str | None
+    ) -> OAuthToken:
+        now = int(time.time())
+        access = AccessToken(
+            token=secrets.token_urlsafe(32),
+            client_id=client_id,
+            scopes=scopes,
+            expires_at=now + TOKEN_TTL_SECONDS,
+            resource=resource,
+        )
+        refresh = RefreshToken(
+            token=secrets.token_urlsafe(32),
+            client_id=client_id,
+            scopes=scopes,
+            expires_at=now + REFRESH_TTL_SECONDS,
+        )
+        self._store.put("access", access.token, access.model_dump(mode="json"))
+        # RefreshToken no tiene campo resource, pero el access token que salga de él sí lo necesita.
+        self._store.put(
+            "refresh",
+            refresh.token,
+            refresh.model_dump(mode="json") | {"resource": resource},
+        )
         return OAuthToken(
-            access_token=access_token,
+            access_token=access.token,
             token_type="Bearer",
             expires_in=TOKEN_TTL_SECONDS,
-            scope=" ".join(authorization_code.scopes) or None,
+            refresh_token=refresh.token,
+            scope=" ".join(scopes) or None,
         )
 
     async def load_access_token(self, token: str) -> AccessToken | None:
@@ -122,18 +144,28 @@ class LocalAuthProvider(OAuthAuthorizationServerProvider):
                 scopes=[],
                 resource=self._resource,
             )
-        access = self._tokens.get(token)
-        if access is None:
+        data = self._store.get("access", token)
+        if data is None:
             return None
+        access = AccessToken.model_validate(data)
         if access.expires_at is not None and access.expires_at < time.time():
-            del self._tokens[token]
+            self._store.pop("access", token)
             return None
         return access
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> RefreshToken | None:
-        return None
+        data = self._store.get("refresh", refresh_token)
+        if data is None:
+            return None
+        token = RefreshToken.model_validate(data)
+        if token.client_id != client.client_id:
+            return None
+        if token.expires_at is not None and token.expires_at < time.time():
+            self._store.pop("refresh", refresh_token)
+            return None
+        return token
 
     async def exchange_refresh_token(
         self,
@@ -141,7 +173,13 @@ class LocalAuthProvider(OAuthAuthorizationServerProvider):
         refresh_token: RefreshToken,
         scopes: list[str],
     ) -> OAuthToken:
-        raise NotImplementedError("No se emiten refresh tokens; hay que volver a autorizar.")
+        data = self._store.get("refresh", refresh_token.token)
+        resource = data.get("resource") if data else None
+        # Rotación: el refresh usado deja de valer, así que uno robado sirve una vez como mucho.
+        self._store.pop("refresh", refresh_token.token)
+        logger.info("Token de acceso renovado para el cliente OAuth.")
+        return self._issue(client.client_id, scopes, resource)
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
-        self._tokens.pop(token.token, None)
+        self._store.pop("access", token.token)
+        self._store.pop("refresh", token.token)

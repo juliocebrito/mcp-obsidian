@@ -58,6 +58,8 @@ Son las restricciones que más fácilmente se rompen sin darse cuenta:
 5. `OBSIDIAN_VERIFY_TLS=0` desactiva la verificación del certificado de Obsidian. Es el
    valor por defecto porque su certificado es autofirmado, pero no copies ese patrón en
    llamadas a otros servicios.
+6. El almacén de `store.py` guarda tokens en claro. Se crea con `0600` y por defecto vive
+   fuera del repositorio; si cambias `MCP_TOKEN_STORE`, que no apunte al árbol de trabajo.
 
 ## Convenciones
 

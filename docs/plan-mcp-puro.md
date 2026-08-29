@@ -142,5 +142,6 @@ Pendiente:
    que cambiar de túnel obliga a volver a copiarla.
 2. **¿Distribución?** Opción A: solo local vía `uv run`. Opción B: publicar para `uvx mcp-obsidian`, más cómodo para otros agentes. Recomendado A ahora, B cuando esté estable.
 3. **¿`delete_note` activa por defecto?** Recomendado un modo de solo lectura por defecto y escritura explícita por variable de entorno, dado que el endpoint estará expuesto por ngrok.
-4. **Los tokens viven en memoria.** Reiniciar el servidor invalida la sesión de Gemini y obliga a
-   reautorizar. Aceptable en desarrollo; si molesta, persistirlos.
+4. ~~**Los tokens viven en memoria.**~~ Resuelto: `store.py` los guarda en
+   `~/.local/state/mcp-obsidian/tokens.json` con permisos `0600` y el proveedor emite refresh
+   tokens rotatorios, así que ni el reinicio ni la caducidad de una hora tiran la sesión.
