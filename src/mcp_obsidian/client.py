@@ -83,8 +83,17 @@ class ObsidianClient:
         response = await self._request("GET", f"/vault/{safe_path(path)}")
         return self._body(response)
 
-    async def write(self, path: str, content: str) -> str:
+    async def _exists(self, target: str) -> bool:
+        response = await self._request("GET", f"/vault/{target}")
+        return response.status_code == 200
+
+    async def write(self, path: str, content: str, *, overwrite: bool = False) -> str:
         target = safe_path(path)
+        if not overwrite and await self._exists(target):
+            raise ToolError(
+                f"La nota '{path}' ya existe y no se sobrescribe. Usa append_note para "
+                "añadir contenido al final, o elige otra ruta."
+            )
         response = await self._request(
             "PUT", f"/vault/{target}", headers=_MARKDOWN, content=content.encode("utf-8")
         )

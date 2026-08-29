@@ -91,13 +91,13 @@ async def list_directory(path: str = "") -> str:
 
 
 async def create_note(path: str, content: str) -> str:
-    """Crea una nota en el vault, sobrescribiéndola por completo si ya existe.
+    """Crea una nota en el vault. Salvo que el servidor permita sobrescribir, falla si la ruta ya existe.
 
     Args:
         path: Ruta/nombre del archivo .md
         content: Contenido Markdown
     """
-    return await obsidian.write(path, content)
+    return await obsidian.write(path, content, overwrite=settings.allow_destructive)
 
 
 async def append_note(path: str, content: str) -> str:
@@ -141,8 +141,11 @@ if settings.read_only:
     logger.info("Modo solo lectura: solo se publican search_notes, get_note y list_directory.")
 elif not settings.allow_destructive:
     logger.info(
-        "move_note y delete_note no se publican. "
-        "Define MCP_ALLOW_DESTRUCTIVE=1 si necesitas mover o borrar notas."
+        "move_note y delete_note no se publican y create_note no sobrescribe notas existentes. "
+        "Define MCP_ALLOW_DESTRUCTIVE=1 para levantar ambas restricciones."
     )
 else:
-    logger.warning("MCP_ALLOW_DESTRUCTIVE=1: delete_note puede borrar notas de forma irreversible.")
+    logger.warning(
+        "MCP_ALLOW_DESTRUCTIVE=1: delete_note puede borrar notas y create_note puede "
+        "reemplazarlas, en ambos casos de forma irreversible."
+    )
