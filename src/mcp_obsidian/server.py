@@ -1,3 +1,4 @@
+import logging
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -10,6 +11,8 @@ from pydantic import AnyHttpUrl
 from .auth import LocalAuthProvider
 from .client import ObsidianClient
 from .config import Settings, load_settings
+
+logger = logging.getLogger(__name__)
 
 
 class StaticTokenVerifier(TokenVerifier):
@@ -78,6 +81,15 @@ async def get_note(path: str) -> str:
 
 
 @mcp.tool()
+async def list_directory(path: str = "") -> str:
+    """Lista el contenido de archivos y carpetas del vault.
+
+    Args:
+        path: Ruta del directorio (dejar vacío para la raíz)
+    """
+    return await obsidian.list_directory(path)
+
+
 async def create_note(path: str, content: str) -> str:
     """Crea una nota en el vault, sobrescribiéndola por completo si ya existe.
 
@@ -88,7 +100,6 @@ async def create_note(path: str, content: str) -> str:
     return await obsidian.write(path, content)
 
 
-@mcp.tool()
 async def append_note(path: str, content: str) -> str:
     """Añade texto al final de una nota existente sin sobrescribirla.
 
@@ -99,17 +110,6 @@ async def append_note(path: str, content: str) -> str:
     return await obsidian.append(path, content)
 
 
-@mcp.tool()
-async def list_directory(path: str = "") -> str:
-    """Lista el contenido de archivos y carpetas del vault.
-
-    Args:
-        path: Ruta del directorio (dejar vacío para la raíz)
-    """
-    return await obsidian.list_directory(path)
-
-
-@mcp.tool()
 async def move_note(source_path: str, destination_path: str) -> str:
     """Mueve o renombra una nota. La nota deja de existir en la ruta de origen.
 
@@ -120,7 +120,6 @@ async def move_note(source_path: str, destination_path: str) -> str:
     return await obsidian.move(source_path, destination_path)
 
 
-@mcp.tool()
 async def delete_note(path: str) -> str:
     """Elimina una nota del vault de forma permanente e irreversible.
 
@@ -128,3 +127,22 @@ async def delete_note(path: str) -> str:
         path: Ruta de la nota a eliminar
     """
     return await obsidian.delete(path)
+
+
+# Una herramienta no registrada no existe para el modelo: no puede invocarla ni verla.
+if not settings.read_only:
+    mcp.tool()(create_note)
+    mcp.tool()(append_note)
+    if settings.allow_destructive:
+        mcp.tool()(move_note)
+        mcp.tool()(delete_note)
+
+if settings.read_only:
+    logger.info("Modo solo lectura: solo se publican search_notes, get_note y list_directory.")
+elif not settings.allow_destructive:
+    logger.info(
+        "move_note y delete_note no se publican. "
+        "Define MCP_ALLOW_DESTRUCTIVE=1 si necesitas mover o borrar notas."
+    )
+else:
+    logger.warning("MCP_ALLOW_DESTRUCTIVE=1: delete_note puede borrar notas de forma irreversible.")

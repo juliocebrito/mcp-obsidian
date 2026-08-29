@@ -23,6 +23,8 @@ class Settings:
     obsidian_url: str
     obsidian_token: str
     verify_tls: bool
+    read_only: bool
+    allow_destructive: bool
     auth_token: str | None
     oauth_client_id: str | None
     oauth_client_secret: str | None
@@ -58,6 +60,8 @@ def load_settings() -> Settings:
         obsidian_url=os.environ.get("OBSIDIAN_URL", "https://127.0.0.1:27124").rstrip("/"),
         obsidian_token=token,
         verify_tls=_flag("OBSIDIAN_VERIFY_TLS", default=False),
+        read_only=_flag("MCP_READ_ONLY", default=False),
+        allow_destructive=_flag("MCP_ALLOW_DESTRUCTIVE", default=False),
         auth_token=os.environ.get("MCP_AUTH_TOKEN") or None,
         oauth_client_id=os.environ.get("MCP_OAUTH_CLIENT_ID") or None,
         oauth_client_secret=os.environ.get("MCP_OAUTH_CLIENT_SECRET") or None,
