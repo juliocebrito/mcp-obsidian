@@ -19,8 +19,8 @@ El paquete `src/mcp_obsidian/` usa el **SDK oficial de Python** (`mcp[cli]` v2) 
 `streamable-http` para remotos. Con `MCP_OAUTH_CLIENT_ID`/`SECRET` definidos, el propio
 servidor hace de authorization server (`auth.py`), que es lo que exige el conector de Gemini.
 
-El antiguo proxy FastAPI de `main.py` ya no existe. `docs/plan-mcp-puro.md` recoge las
-decisiones tomadas durante la migración.
+El antiguo proxy FastAPI de `main.py` ya no existe. `docs/arquitectura.md` describe la
+solución actual: módulos, herramientas, transportes y capas de autorización.
 
 Los skills específicos del proyecto viven en `.agents/skills/`.
 

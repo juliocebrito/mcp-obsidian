@@ -1,5 +1,7 @@
 ## Puesta en marcha
 
+Cómo está construido por dentro: [docs/arquitectura.md](docs/arquitectura.md).
+
 ```sh
 cp .env.example .env
 # Edita .env y pon el token real de Obsidian antes de arrancar el servidor.

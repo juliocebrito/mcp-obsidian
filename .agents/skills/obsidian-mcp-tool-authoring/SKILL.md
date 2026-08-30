@@ -15,7 +15,7 @@ Si la tool escribe o borra, no la decores: defínela suelta y regístrala al fin
 dentro del bloque que comprueba `settings.read_only` y `settings.allow_destructive`. Una
 herramienta no registrada no existe para el modelo.
 
-Contexto histórico de las decisiones: `docs/plan-mcp-puro.md`.
+Contexto de las decisiones de diseño: `docs/arquitectura.md`.
 
 ## Contrato con la API de Obsidian
 
