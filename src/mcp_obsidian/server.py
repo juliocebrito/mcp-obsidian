@@ -50,11 +50,24 @@ async def _lifespan(_: MCPServer) -> AsyncIterator[None]:
         await obsidian.aclose()
 
 
+# Puntero, no copia: el protocolo vive en el vault y se versiona con las notas que rige.
+# Un agente que entra por MCP no tiene dotfiles donde alojar el disparador, así que viaja
+# aquí, en el initialize del protocolo, antes de su primer turno.
+INSTRUCTIONS = """Este vault tiene un protocolo de escritura propio, en `AGENTS.md`
+(raíz del vault).
+
+Antes de escribir, crear o modificar cualquier nota, léelo con `get_note("AGENTS.md")`
+y sigue lo que diga. Cubre dónde va cada cosa, el formato exacto y qué hacer al terminar.
+
+No deduzcas la estructura del vault listando carpetas: las rutas correctas están en ese
+fichero."""
+
 settings = load_settings()
 obsidian = ObsidianClient(settings)
 mcp = MCPServer(
     "obsidian-local-rest-api",
     version="1.0.0",
+    instructions=INSTRUCTIONS,
     lifespan=_lifespan,
     **_auth_kwargs(settings),
 )
