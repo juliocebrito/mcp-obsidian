@@ -1,5 +1,6 @@
-MCP_PORT ?= 8001
 ENV_FILE ?= .env
+-include $(ENV_FILE)
+MCP_PORT ?= 8001
 OBSIDIAN_URL ?= https://127.0.0.1:27124
 CERT ?= $(HOME)/.local/state/mcp-obsidian/obsidian.crt
 
